@@ -83,6 +83,12 @@ theta_deg = st.sidebar.slider("Launch angle, θ (degrees)", min_value=1, max_val
 g = st.sidebar.slider("Acceleration due to gravity, g (m/s²)", min_value=1.0,
                        max_value=20.0, value=9.8, step=0.1)
 
+st.sidebar.header("Reference Scale (for visual comparison)")
+ground_length = st.sidebar.slider("Ground length shown, L (m)", min_value=5.0,
+                                   max_value=300.0, value=100.0, step=5.0)
+ref_height = st.sidebar.slider("Height scale shown, H_ref (m)", min_value=2.0,
+                                max_value=100.0, value=30.0, step=1.0)
+
 # --- Compute -------------------------------------------------------------------
 T, H, R, t, x, y = projectile_kinematics(u, theta_deg, g)
 
@@ -110,19 +116,46 @@ ax.plot(x_peak, H, marker='*', markersize=22, color='gold',
 ax.plot(0, 0, marker='o', markersize=10, color='seagreen', label='Launch point')
 ax.plot(R, 0, marker='o', markersize=10, color='firebrick', label='Landing point')
 
+# Reference ground length (e.g. a field/pitch) and reference height (e.g. a wall)
+ax.axvline(ground_length, color='gray', linestyle=':', linewidth=1.5,
+           label=f'Ground length ref. ({ground_length:.0f} m)')
+ax.axhline(ref_height, color='purple', linestyle=':', linewidth=1.5,
+           label=f'Height ref. ({ref_height:.0f} m)')
+
 ax.axhline(0, color='saddlebrown', linewidth=3)
 ax.set_xlabel('Horizontal distance, x (m)')
 ax.set_ylabel('Height, y (m)')
 ax.set_title(f'Trajectory for u = {u:.1f} m/s, θ = {theta_deg}°, g = {g:.1f} m/s²')
 ax.grid(True, linestyle='--', alpha=0.5)
-ax.set_xlim(left=-0.05 * max(R, 1))
-ax.set_ylim(bottom=-0.05 * max(H, 1))
-ax.legend(loc='upper right', fontsize=9)
+
+# Fixed axis limits from the reference sliders, so the SAME trajectory looks
+# visibly shorter/taller as students shrink or grow the reference scale.
+ax.set_xlim(-0.03 * ground_length, ground_length * 1.05)
+ax.set_ylim(-0.05 * ref_height, ref_height * 1.05)
+ax.legend(loc='upper right', fontsize=8)
 
 st.pyplot(fig)
+
+# --- Clearance feedback ---------------------------------------------------
+msg_col1, msg_col2 = st.columns(2)
+if R <= ground_length:
+    msg_col1.success(f"Lands within the {ground_length:.0f} m ground length "
+                      f"(range = {R:.1f} m).")
+else:
+    msg_col1.error(f"Overshoots the {ground_length:.0f} m ground length "
+                    f"(range = {R:.1f} m).")
+
+if H <= ref_height:
+    msg_col2.success(f"Stays under the {ref_height:.0f} m height reference "
+                      f"(max height = {H:.1f} m).")
+else:
+    msg_col2.error(f"Exceeds the {ref_height:.0f} m height reference "
+                    f"(max height = {H:.1f} m).")
 
 st.caption(
     "This model ignores air resistance. Try θ = 45° to see the angle that "
     "gives the maximum range for a fixed speed — a classic result worth "
-    "verifying yourself from the range formula."
+    "verifying yourself from the range formula. The dotted lines are fixed "
+    "reference scales — shrink or grow them to see the same throw look "
+    "shorter or taller by comparison."
 )
